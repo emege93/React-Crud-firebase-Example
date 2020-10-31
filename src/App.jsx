@@ -5,6 +5,8 @@ function App() {
 
   const [tareas, setTareas] = useState([])
   const [tarea, setTarea] = useState('')
+  const [modoEdicion, setModoEdicion] = useState(false)
+  const [id, setId] = useState('')
 
   useEffect(() => {
 
@@ -59,6 +61,53 @@ function App() {
     console.log(tarea);
   }
 
+  const eliminar = async (id) => {
+    try {
+
+      const db = firebase.firestore()
+      await db.collection('tareas').doc(id).delete()
+
+      const arrayFiltrado = tareas.filter(item => item.id !== id)
+      setTareas(arrayFiltrado)
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const activarEdicion = (item) => {
+    setModoEdicion(true)
+    setTarea(item.name)
+    setId(item.id)
+  }
+
+  const editar = async (e) => {
+    e.preventDefault()
+
+    if(!tarea.trim()){
+      console.log('Está vacio');
+      return
+    }
+
+    try {
+
+      const db = firebase.firestore()
+      await db.collection('tareas').doc(id).update({
+        name: tarea
+      })
+      const arrayEditado = tareas.map(item => (
+        item.id === id ? {id: item.id, fecha: item.fecha, name: tarea} : item
+      ))
+      setTareas(arrayEditado)
+      setModoEdicion(false)
+      setTarea('')
+      setId('')
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   return (
     <div className="container mt-3">
       <div className="row">
@@ -66,13 +115,33 @@ function App() {
           <ul className="list-group">
             {
               tareas.map(tarea => (
-                <li className="list-group-item" key={tarea.id}>{tarea.name} - {tarea.fecha}</li>
+                <li className="list-group-item" key={tarea.id}>{tarea.name} - {tarea.fecha}
+                  <button
+                    className="btn btn-danger btn-sm float-right"
+                    type="submit"
+                    onClick={() => eliminar(tarea.id)}
+                  >
+                    Eliminar
+                  </button>
+                  <button
+                    className="btn btn-warning btn-sm float-right mr-2"
+                    type="submit"
+                    onClick={() => activarEdicion(tarea)}
+                  >
+                    Editar
+                  </button>
+                </li>
               ))
             }
           </ul>
         </div>
         <div className="col-md-6">
-          <form onSubmit={agregar}>
+          <h3>
+            {
+              modoEdicion ? 'Editar Tarea' : 'Agregar tarea'
+            }
+          </h3>
+          <form onSubmit={ modoEdicion ? editar : agregar}>
             <input
               type="text"
               placeholder="Ingrese Tarea"
@@ -81,10 +150,14 @@ function App() {
               onChange={e => setTarea(e.target.value)}
             />
             <button
-              className="btn btn-dark btn-block"
+              className={
+                modoEdicion ? 'btn btn-warning btn-block' : 'btn btn-dark btn-block'
+              }
               type="submit"
             >
-                Agregar
+                {
+                  modoEdicion ? 'Guardar' : 'Agregar'
+                }
             </button>
           </form>
         </div>
